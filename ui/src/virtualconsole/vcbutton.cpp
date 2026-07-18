@@ -724,6 +724,15 @@ void VCButton::pressFunction()
         if (f == NULL)
             return;
 
+        // PATCH: a toggle button inside a solo frame must never be
+        // deactivated by clicking it while active — that would black out every
+        // channel it defines. Deactivation only happens when a sibling button
+        // in the solo frame starts (VCSoloFrame::slotWidgetFunctionStarting),
+        // which does not pass through here. Ignore the click entirely:
+        // no stop, no restart.
+        if (state() == Active && isChildOfSoloFrame())
+            return;
+      
         // if the button is in a SoloFrame and the function is running but was
         // started by a different function (a chaser or collection), turn other
         // functions off and start this one.
