@@ -1,0 +1,95 @@
+name: Windows build
+
+# Builds QLC+ 4.x for Windows (64-bit, MinGW/Qt5 via MSYS2) and produces:
+#   - QLCplus-windows-portable  (zip of the full program folder — just unzip & run)
+#   - QLCplus-windows-installer (NSIS setup .exe, same as official releases)
+#
+# Trigger it manually from the Actions tab ("Run workflow") or by pushing
+# to the branch this file lives on.
+
+on:
+  workflow_dispatch:
+  push:
+    paths-ignore:
+      - 'resources/fixtures/**'
+      - 'docs/**'
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up MSYS2 / MinGW64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            base-devel
+            git
+            zip
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-qt5-base
+            mingw-w64-x86_64-qt5-multimedia
+            mingw-w64-x86_64-qt5-script
+            mingw-w64-x86_64-qt5-serialport
+            mingw-w64-x86_64-qt5-imageformats
+            mingw-w64-x86_64-qt5-tools
+            mingw-w64-x86_64-libusb
+            mingw-w64-x86_64-libftdi
+            mingw-w64-x86_64-fftw
+            mingw-w64-x86_64-libsndfile
+            mingw-w64-x86_64-libmad
+            mingw-w64-x86_64-flac
+            mingw-w64-x86_64-nsis
+
+      - name: qmake
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          qmake qlc.pro
+
+      - name: Build
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          mingw32-make -j$(nproc)
+
+      - name: Install to staging folder (C:\qlcplus)
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          mingw32-make install
+
+      - name: Portable zip
+        run: |
+          cd /c/qlcplus
+          zip -r "$GITHUB_WORKSPACE/QLCplus-portable-win64.zip" .
+
+      - name: NSIS installer
+        # The .nsi script hardcodes c:\projects\qlcplus for its icon/license
+        # paths, so mirror the repo there, then run makensis from the staging
+        # folder (its File commands are relative to the working directory).
+        run: |
+          mkdir -p /c/projects
+          cp -r "$GITHUB_WORKSPACE" /c/projects/qlcplus
+          cd /c/qlcplus
+          makensis /c/projects/qlcplus/platforms/windows/qlcplus4Qt5.nsi
+          cp QLC+_*.exe "$GITHUB_WORKSPACE/" || true
+        continue-on-error: true
+
+      - name: Upload portable zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: QLCplus-windows-portable
+          path: QLCplus-portable-win64.zip
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: QLCplus-windows-installer
+          path: QLC+_*.exe
+          if-no-files-found: ignore
