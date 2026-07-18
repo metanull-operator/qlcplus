@@ -501,8 +501,10 @@ if(MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4456")   # Suppress warning C4456: declaration of '_container_' hides previous local declaration in foreach
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /WX")
 elseif(NOT APPLE AND NOT IOS)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
+    # PATCH (metanull): no -Werror on this fork branch. Newer GCC releases on
+    # the CI runners add warnings (e.g. -Wsfinae-incomplete in GCC 15) that
+    # turn a frozen release tag into a build failure. Warnings stay visible,
+    # they just no longer abort the build.
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wextra")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 endif()
-
