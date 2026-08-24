@@ -4,7 +4,10 @@ TEMPLATE = subdirs
 
  SUBDIRS              += dmxusb
  SUBDIRS              += peperoni
- SUBDIRS              += udmx
+ # PATCH (metanull): uDMX requires libusb, which this CI build does not
+ # provide. This rig outputs via the DMX USB plugin, not uDMX, so skip
+ # uDMX on Windows only.
+ !win32:SUBDIRS       += udmx
  SUBDIRS              += midi
  unix {
    system(pkg-config --exists libola) {
