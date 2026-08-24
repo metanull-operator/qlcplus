@@ -40,9 +40,10 @@ CONFIG(ftd2xx) {
 
     win32 {
         # Windows target
+        # PATCH (metanull): 64-bit build - link the amd64 import library,
+        # matching upstream's current CI, instead of the old i386 paths.
         FTD2XXDIR    = C:/projects/D2XXSDK
-        LIBS        += -L$$FTD2XXDIR/i386 -lftd2xx
-        LIBS     += $$FTD2XXDIR/i386/libftd2xx.a
+        LIBS     += $$FTD2XXDIR/amd64/libftd2xx.a
         INCLUDEPATH += $$FTD2XXDIR
         QMAKE_LFLAGS += -shared
     }
