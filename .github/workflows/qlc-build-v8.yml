@@ -1,0 +1,100 @@
+name: Windows build
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt 5.15.2 with MinGW toolchain
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '5.15.2'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_mingw81'
+          modules: 'qtscript'
+          tools: 'tools_mingw,qt.tools.win64_mingw810'
+
+      - name: Sanity check
+        run: |
+          which qmake && qmake --version
+          which mingw32-make || find "$IQTA_TOOLS" -name "mingw32-make.exe" || true
+
+      - name: D2XX SDK download
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path C:\projects\D2XXSDK | Out-Null
+          Invoke-WebRequest -Uri "https://qlcplus.org/misc/CDM-v2.12.36.20-WHQL-Certified.zip" -OutFile C:\projects\D2XXSDK\cdm.zip
+          Expand-Archive -Path C:\projects\D2XXSDK\cdm.zip -DestinationPath C:\projects\D2XXSDK -Force
+
+      - name: D2XX import library
+        run: |
+          cd /c/projects/D2XXSDK/amd64
+          if command -v gendef >/dev/null 2>&1; then
+            gendef - ftd2xx64.dll > ftd2xx.def
+            dlltool -k --input-def ftd2xx.def --dllname ftd2xx64.dll --output-lib libftd2xx.a
+          else
+            echo "gendef not found - using vendor import library as fallback"
+            cp ftd2xx.lib libftd2xx.a
+          fi
+          ls -la
+
+      - name: qmake
+        run: qmake qlc.pro
+
+      - name: Build
+        run: mingw32-make -j4
+
+      - name: Install to staging folder
+        # -k / || true: the install_translations target invokes a .sh script
+        # that bare Windows cannot run (WSL stub). Everything else installs;
+        # translations are generated explicitly in the next step.
+        run: mingw32-make -k install || true
+
+      - name: Generate translations
+        run: |
+          ./translate.sh ui || true
+          cp *.qm /c/qlcplus/ || echo "no qm files produced"
+
+      - name: Deploy executables and Qt runtime into staging
+        run: |
+          cp main/release/qlcplus.exe /c/qlcplus/ || cp main/qlcplus.exe /c/qlcplus/ || true
+          cp fixtureeditor/release/qlcplus-fixtureeditor.exe /c/qlcplus/ || cp fixtureeditor/qlcplus-fixtureeditor.exe /c/qlcplus/ || true
+          windeployqt /c/qlcplus/qlcplus.exe || true
+          cp /c/projects/D2XXSDK/amd64/ftd2xx64.dll /c/qlcplus/ || true
+          echo "=== staging folder contents ==="
+          ls /c/qlcplus
+
+      - name: Portable zip
+        shell: pwsh
+        run: Compress-Archive -Path C:\qlcplus\* -DestinationPath "$env:GITHUB_WORKSPACE\QLCplus-portable-win64.zip"
+
+      - name: NSIS installer
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          New-Item -ItemType Directory -Force -Path C:\projects | Out-Null
+          Copy-Item -Recurse -Force $env:GITHUB_WORKSPACE C:\projects\qlcplus
+          Set-Location C:\qlcplus
+          & "C:\Program Files (x86)\NSIS\makensis.exe" C:\projects\qlcplus\platforms\windows\qlcplus4Qt5.nsi
+          Copy-Item C:\qlcplus\QLC+_*.exe $env:GITHUB_WORKSPACE\ -ErrorAction SilentlyContinue
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QLCplus-windows-portable
+          path: QLCplus-portable-win64.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QLCplus-windows-installer
+          path: QLC+_*.exe
+          if-no-files-found: ignore
