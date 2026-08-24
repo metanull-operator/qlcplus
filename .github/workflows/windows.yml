@@ -16,11 +16,8 @@ jobs:
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
-          update: false
-          install: git zip
-
-      - name: Install toolchain and Qt5
-        run: pacman -S --needed --noconfirm mingw-w64-x86_64-toolchain mingw-w64-x86_64-qt5-base mingw-w64-x86_64-qt5-multimedia mingw-w64-x86_64-qt5-script mingw-w64-x86_64-qt5-serialport mingw-w64-x86_64-qt5-imageformats mingw-w64-x86_64-qt5-tools mingw-w64-x86_64-libusb mingw-w64-x86_64-libftdi mingw-w64-x86_64-fftw mingw-w64-x86_64-libsndfile mingw-w64-x86_64-libmad mingw-w64-x86_64-flac mingw-w64-x86_64-nsis
+          update: true
+          install: git zip mingw-w64-x86_64-toolchain mingw-w64-x86_64-qt5-base mingw-w64-x86_64-qt5-multimedia mingw-w64-x86_64-qt5-script mingw-w64-x86_64-qt5-serialport mingw-w64-x86_64-qt5-imageformats mingw-w64-x86_64-qt5-tools mingw-w64-x86_64-libusb mingw-w64-x86_64-libftdi mingw-w64-x86_64-fftw mingw-w64-x86_64-libsndfile mingw-w64-x86_64-libmad mingw-w64-x86_64-flac mingw-w64-x86_64-nsis
 
       - name: Sanity check
         run: |
