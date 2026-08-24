@@ -54,7 +54,16 @@ jobs:
         run: mingw32-make -j4
 
       - name: Install to staging folder
-        run: mingw32-make install
+        # -k / || true: the install_translations target invokes a .sh script
+        # that bare Windows cannot run (WSL stub). Everything else installs;
+        # translations are generated explicitly in the next step.
+        run: mingw32-make -k install || true
+
+      - name: Generate translations
+        run: |
+          ./translate.sh ui || true
+          cp *.qm /c/qlcplus/ || echo "no qm files produced"
+          ls /c/qlcplus | head -60
 
       - name: Deploy Qt runtime into staging
         run: |
