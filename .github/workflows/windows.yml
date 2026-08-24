@@ -1,0 +1,61 @@
+name: Windows build
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: false
+          install: git zip
+
+      - name: Install toolchain and Qt5
+        run: pacman -S --needed --noconfirm mingw-w64-x86_64-toolchain mingw-w64-x86_64-qt5-base mingw-w64-x86_64-qt5-multimedia mingw-w64-x86_64-qt5-script mingw-w64-x86_64-qt5-serialport mingw-w64-x86_64-qt5-imageformats mingw-w64-x86_64-qt5-tools mingw-w64-x86_64-libusb mingw-w64-x86_64-libftdi mingw-w64-x86_64-fftw mingw-w64-x86_64-libsndfile mingw-w64-x86_64-libmad mingw-w64-x86_64-flac mingw-w64-x86_64-nsis
+
+      - name: Sanity check
+        run: |
+          which qmake
+          qmake --version
+          which mingw32-make
+
+      - name: qmake
+        run: cd "$GITHUB_WORKSPACE" && qmake qlc.pro
+
+      - name: Build
+        run: cd "$GITHUB_WORKSPACE" && mingw32-make -j4
+
+      - name: Install to staging folder
+        run: cd "$GITHUB_WORKSPACE" && mingw32-make install
+
+      - name: Portable zip
+        run: cd /c/qlcplus && zip -r "$GITHUB_WORKSPACE/QLCplus-portable-win64.zip" .
+
+      - name: NSIS installer
+        continue-on-error: true
+        run: |
+          mkdir -p /c/projects
+          cp -r "$GITHUB_WORKSPACE" /c/projects/qlcplus
+          cd /c/qlcplus
+          makensis /c/projects/qlcplus/platforms/windows/qlcplus4Qt5.nsi
+          cp QLC+_*.exe "$GITHUB_WORKSPACE/" || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QLCplus-windows-portable
+          path: QLCplus-portable-win64.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QLCplus-windows-installer
+          path: QLC+_*.exe
+          if-no-files-found: ignore
