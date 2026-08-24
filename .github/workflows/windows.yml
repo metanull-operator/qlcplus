@@ -28,6 +28,25 @@ jobs:
           which qmake && qmake --version
           which mingw32-make || find "$IQTA_TOOLS" -name "mingw32-make.exe" || true
 
+      - name: D2XX SDK download
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path C:\projects\D2XXSDK | Out-Null
+          Invoke-WebRequest -Uri "https://qlcplus.org/misc/CDM-v2.12.36.20-WHQL-Certified.zip" -OutFile C:\projects\D2XXSDK\cdm.zip
+          Expand-Archive -Path C:\projects\D2XXSDK\cdm.zip -DestinationPath C:\projects\D2XXSDK -Force
+
+      - name: D2XX import library
+        run: |
+          cd /c/projects/D2XXSDK/amd64
+          if command -v gendef >/dev/null 2>&1; then
+            gendef - ftd2xx64.dll > ftd2xx.def
+            dlltool -k --input-def ftd2xx.def --dllname ftd2xx64.dll --output-lib libftd2xx.a
+          else
+            echo "gendef not found - using vendor import library as fallback"
+            cp ftd2xx.lib libftd2xx.a
+          fi
+          ls -la
+
       - name: qmake
         run: qmake qlc.pro
 
@@ -38,7 +57,9 @@ jobs:
         run: mingw32-make install
 
       - name: Deploy Qt runtime into staging
-        run: windeployqt /c/qlcplus/qlcplus.exe || true
+        run: |
+          windeployqt /c/qlcplus/qlcplus.exe || true
+          cp /c/projects/D2XXSDK/amd64/ftd2xx64.dll /c/qlcplus/ || true
 
       - name: Portable zip
         shell: pwsh
