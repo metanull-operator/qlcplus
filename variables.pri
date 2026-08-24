@@ -15,9 +15,9 @@ qmlui:  APPVERSION = 5.0.0 Beta 3
 # Compiler & linker configuration
 #############################################################################
 
-# Treat all compiler warnings as errors
-QMAKE_CXXFLAGS += -Werror
-unix:QMAKE_CFLAGS += -Werror
+# PATCH (metanull): no -Werror on this fork branch. Newer GCC releases on
+# the CI runners add warnings that turn this frozen release into a build
+# failure. Warnings stay visible; they no longer abort the build.
 
 CONFIG         += warn_on
 
