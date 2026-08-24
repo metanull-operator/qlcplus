@@ -17,7 +17,10 @@ TEMPLATE = subdirs
    }
  }
  !macx:!win32:SUBDIRS += dmx4linux
- SUBDIRS              += velleman
+ # PATCH (metanull): Velleman K8062 plugin needs a vendor SDK at C:/Qt/K8062D
+ # which this CI build does not provide; rig does not use a K8062. Skip on
+ # Windows only.
+ !win32:SUBDIRS       += velleman
  SUBDIRS              += enttecwing
  SUBDIRS              += hid
  !macx:!win32:SUBDIRS += spi
